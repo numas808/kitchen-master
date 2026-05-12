@@ -1,9 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
-import Match from './pages/Match'
-import RecipeDetail from './pages/RecipeDetail'
-import ShoppingList from './pages/ShoppingList'
 import Settings from './pages/Settings'
+import Stock from './pages/Stock'
+import RecipeHub from './pages/RecipeHub'
 
 function App() {
   return (
@@ -12,10 +11,11 @@ function App() {
         <div className="max-w-[430px] mx-auto min-h-screen relative">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/match" element={<Match />} />
-            <Route path="/recipe/:id" element={<RecipeDetail />} />
-            <Route path="/shopping/:id" element={<ShoppingList />} />
+            <Route path="/stock" element={<Stock />} />
+            <Route path="/stockhub" element={<Stock />} />
+            <Route path="/recipehub" element={<RecipeHub />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>

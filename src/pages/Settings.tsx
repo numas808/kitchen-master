@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import AppHeader from '../components/AppHeader';
 import { useSettings } from '../hooks/useSettings';
 
 const CATEGORIES = [
@@ -19,7 +19,6 @@ const TIME_OPTIONS = [
 ];
 
 export default function Settings() {
-  const navigate = useNavigate();
   const [settings, setSettings] = useSettings();
   const [ngInput, setNgInput] = useState('');
 
@@ -52,15 +51,7 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
-      <div className="bg-white shadow-sm px-5 py-4 flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-gray-500 hover:text-gray-700 text-xl"
-        >
-          ←
-        </button>
-        <h1 className="text-xl font-bold text-gray-800">⚙️ 設定</h1>
-      </div>
+      <AppHeader />
 
       <div className="p-5 space-y-6">
         {/* Food preferences */}
