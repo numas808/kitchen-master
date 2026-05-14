@@ -1,5 +1,6 @@
 import {
   sendJson,
+  ensureAuthorized,
   getProviderConfigError,
   searchByTavily,
   searchByGoogleCustomSearch,
@@ -7,6 +8,10 @@ import {
 } from './_utils.js';
 
 export default async function handler(req, res) {
+  if (!ensureAuthorized(req, res)) {
+    return;
+  }
+
   if (req.method !== 'GET') {
     sendJson(res, 405, { error: 'Method not allowed' });
     return;

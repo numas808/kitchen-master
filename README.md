@@ -173,6 +173,7 @@ npm run dev
 
 - フロントエンド: `npm run build` で Vite ビルドを作成し、Vercel にデプロイ
 - 環境変数: `.env.example` を参考に `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` と API 用のキーを設定
+- `APP_ACCESS_PASSWORD` を設定すると、アプリ全体にパスワード保護がかかります。未設定なら保護は無効です。
 - `api/` フォルダに Vercel Functions 用 API を追加しました。フロントエンドの `fetch('/api/...')` 呼び出しは、そのまま Vercel 上の関数に届きます。
 - `shared-data` の永続化は Supabase `shared_data` テーブルに移行済みです。Vercel 環境変数 `SUPABASE_SERVICE_ROLE_KEY` を使い、クライアントには `VITE_` プレフィックスのキーだけを公開します。
 - 現状の `server/api-server.mjs` はローカル開発用です。Vercel に本番デプロイする場合は、`api/` の関数を利用するか、Supabase Edge Functions に移行してください。

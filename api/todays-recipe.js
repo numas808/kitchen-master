@@ -1,5 +1,6 @@
 import {
   sendJson,
+  ensureAuthorized,
   readRequestBody,
   getTodaysRecipeConfigError,
   normalizeTodaysStockItems,
@@ -11,6 +12,10 @@ import {
 } from './_utils.js';
 
 export default async function handler(req, res) {
+  if (!ensureAuthorized(req, res)) {
+    return;
+  }
+
   if (req.method !== 'POST') {
     sendJson(res, 405, { error: 'Method not allowed' });
     return;

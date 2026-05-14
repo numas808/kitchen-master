@@ -1,6 +1,10 @@
-import { sendJson, readRequestBody, loadAppDb, saveAppDb } from './_utils.js';
+import { sendJson, readRequestBody, loadAppDb, saveAppDb, ensureAuthorized } from './_utils.js';
 
 export default async function handler(req, res) {
+  if (!ensureAuthorized(req, res)) {
+    return;
+  }
+
   if (req.method === 'GET') {
     try {
       const appDb = await loadAppDb();

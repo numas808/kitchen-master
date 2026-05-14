@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
@@ -9,7 +10,9 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 const GOOGLE_API_KEY = process.env.GOOGLE_SEARCH_API_KEY || process.env.VITE_GOOGLE_SEARCH_API_KEY;
 const GOOGLE_CX = process.env.GOOGLE_SEARCH_CX || process.env.VITE_GOOGLE_SEARCH_CX;
+const APP_ACCESS_PASSWORD = process.env.APP_ACCESS_PASSWORD || '';
 const APP_DB_FILE = new URL('./app-db.json', import.meta.url);
+const ACCESS_COOKIE_NAME = 'km_access';
 
 const EMPTY_APP_DB = {
   stockItems: [],
@@ -61,6 +64,101 @@ function sendJson(res, status, body) {
     'Access-Control-Allow-Origin': '*',
   });
   res.end(JSON.stringify(body));
+}
+
+function hashValue(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function isSameToken(left, right) {
+  if (!left || !right || left.length !== right.length) {
+    return false;
+  }
+
+  return timingSafeEqual(Buffer.from(left), Buffer.from(right));
+}
+
+function parseCookies(req) {
+  const rawCookie = req.headers.cookie || '';
+
+  return rawCookie.split(';').reduce((cookies, entry) => {
+    const [name, ...rest] = entry.trim().split('=');
+    if (!name) {
+      return cookies;
+    }
+
+    cookies[name] = decodeURIComponent(rest.join('='));
+    return cookies;
+  }, {});
+}
+
+function isAccessProtectionEnabled() {
+  return APP_ACCESS_PASSWORD.trim().length > 0;
+}
+
+function getExpectedAccessToken() {
+  return hashValue(APP_ACCESS_PASSWORD.trim());
+}
+
+function isAuthorizedRequest(req) {
+  if (!isAccessProtectionEnabled()) {
+    return true;
+  }
+
+  const cookies = parseCookies(req);
+  return isSameToken(cookies[ACCESS_COOKIE_NAME], getExpectedAccessToken());
+}
+
+function ensureAuthorized(req, res) {
+  if (isAuthorizedRequest(req)) {
+    return true;
+  }
+
+  sendJson(res, 401, {
+    error: 'アクセスパスワードが必要です。',
+    code: 'AUTH_REQUIRED',
+  });
+  return false;
+}
+
+function setAccessCookie(res) {
+  const parts = [
+    `${ACCESS_COOKIE_NAME}=${encodeURIComponent(getExpectedAccessToken())}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=604800',
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    parts.push('Secure');
+  }
+
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function clearAccessCookie(res) {
+  const parts = [
+    `${ACCESS_COOKIE_NAME}=`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0',
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    parts.push('Secure');
+  }
+
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function verifyAccessPassword(password) {
+  if (!isAccessProtectionEnabled()) {
+    return true;
+  }
+
+  return isSameToken(hashValue(String(password || '').trim()), getExpectedAccessToken());
 }
 
 function normalizeItem(item, index) {
@@ -419,6 +517,10 @@ async function searchByGoogleCustomSearch(query) {
 }
 
 async function handleWebRecipeSearch(req, res) {
+  if (!ensureAuthorized(req, res)) {
+    return;
+  }
+
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const query = (url.searchParams.get('query') || '').trim();
 
@@ -486,6 +588,10 @@ async function readRequestBody(req) {
 }
 
 async function handleTodaysRecipe(req, res) {
+  if (!ensureAuthorized(req, res)) {
+    return;
+  }
+
   const configError = getTodaysRecipeConfigError();
   if (configError) {
     sendJson(res, 500, { error: configError });
@@ -584,6 +690,10 @@ async function handleSharedDataGet(res) {
 }
 
 async function handleSharedDataPut(req, res) {
+  if (!ensureAuthorized(req, res)) {
+    return;
+  }
+
   let body;
   try {
     body = await readRequestBody(req);
@@ -627,6 +737,50 @@ async function handleSharedDataPut(req, res) {
   }
 }
 
+async function handleAccessSession(req, res) {
+  if (req.method === 'GET') {
+    sendJson(res, 200, {
+      authenticated: isAuthorizedRequest(req),
+      protectionEnabled: isAccessProtectionEnabled(),
+    });
+    return;
+  }
+
+  if (req.method === 'POST') {
+    let body;
+    try {
+      body = await readRequestBody(req);
+    } catch {
+      sendJson(res, 400, { error: 'JSON body の読み込みに失敗しました。' });
+      return;
+    }
+
+    const password = typeof body?.password === 'string' ? body.password : '';
+
+    if (!verifyAccessPassword(password)) {
+      clearAccessCookie(res);
+      sendJson(res, 401, { error: 'パスワードが正しくありません。' });
+      return;
+    }
+
+    setAccessCookie(res);
+    sendJson(res, 200, {
+      ok: true,
+      authenticated: true,
+      protectionEnabled: isAccessProtectionEnabled(),
+    });
+    return;
+  }
+
+  if (req.method === 'DELETE') {
+    clearAccessCookie(res);
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  sendJson(res, 405, { error: 'Method not allowed' });
+}
+
 const server = createServer((req, res) => {
   if (!req.url || !req.method) {
     sendJson(res, 400, { error: 'invalid request' });
@@ -648,12 +802,21 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (req.url.startsWith('/api/access/session')) {
+    handleAccessSession(req, res);
+    return;
+  }
+
   if (req.method === 'POST' && req.url.startsWith('/api/todays-recipe')) {
     handleTodaysRecipe(req, res);
     return;
   }
 
   if (req.method === 'GET' && req.url.startsWith('/api/shared-data')) {
+    if (!ensureAuthorized(req, res)) {
+      return;
+    }
+
     handleSharedDataGet(res);
     return;
   }

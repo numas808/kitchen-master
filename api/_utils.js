@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,7 +11,9 @@ const GOOGLE_API_KEY = process.env.GOOGLE_SEARCH_API_KEY || process.env.VITE_GOO
 const GOOGLE_CX = process.env.GOOGLE_SEARCH_CX || process.env.VITE_GOOGLE_SEARCH_CX;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const APP_ACCESS_PASSWORD = process.env.APP_ACCESS_PASSWORD || '';
 const APP_DB_FILE = new URL('../app-db.json', import.meta.url);
+const ACCESS_COOKIE_NAME = 'km_access';
 
 const EMPTY_APP_DB = {
   stockItems: [],
@@ -103,6 +106,101 @@ function sendJson(res, status, body) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.statusCode = status;
   res.end(JSON.stringify(body));
+}
+
+function hashValue(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function isSameToken(left, right) {
+  if (!left || !right || left.length !== right.length) {
+    return false;
+  }
+
+  return timingSafeEqual(Buffer.from(left), Buffer.from(right));
+}
+
+function parseCookies(req) {
+  const rawCookie = req.headers.cookie || '';
+
+  return rawCookie.split(';').reduce((cookies, entry) => {
+    const [name, ...rest] = entry.trim().split('=');
+    if (!name) {
+      return cookies;
+    }
+
+    cookies[name] = decodeURIComponent(rest.join('='));
+    return cookies;
+  }, {});
+}
+
+function isAccessProtectionEnabled() {
+  return APP_ACCESS_PASSWORD.trim().length > 0;
+}
+
+function getExpectedAccessToken() {
+  return hashValue(APP_ACCESS_PASSWORD.trim());
+}
+
+function isAuthorizedRequest(req) {
+  if (!isAccessProtectionEnabled()) {
+    return true;
+  }
+
+  const cookies = parseCookies(req);
+  return isSameToken(cookies[ACCESS_COOKIE_NAME], getExpectedAccessToken());
+}
+
+function ensureAuthorized(req, res) {
+  if (isAuthorizedRequest(req)) {
+    return true;
+  }
+
+  sendJson(res, 401, {
+    error: 'アクセスパスワードが必要です。',
+    code: 'AUTH_REQUIRED',
+  });
+  return false;
+}
+
+function setAccessCookie(res) {
+  const parts = [
+    `${ACCESS_COOKIE_NAME}=${encodeURIComponent(getExpectedAccessToken())}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=604800',
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    parts.push('Secure');
+  }
+
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function clearAccessCookie(res) {
+  const parts = [
+    `${ACCESS_COOKIE_NAME}=`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=0',
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    parts.push('Secure');
+  }
+
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function verifyAccessPassword(password) {
+  if (!isAccessProtectionEnabled()) {
+    return true;
+  }
+
+  return isSameToken(hashValue(String(password || '').trim()), getExpectedAccessToken());
 }
 
 function normalizeItem(item, index) {
@@ -478,6 +576,12 @@ export {
   loadAppDb,
   saveAppDb,
   sendJson,
+  ensureAuthorized,
+  isAuthorizedRequest,
+  isAccessProtectionEnabled,
+  setAccessCookie,
+  clearAccessCookie,
+  verifyAccessPassword,
   readRequestBody,
   getProviderConfigError,
   getTodaysRecipeConfigError,
