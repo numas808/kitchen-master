@@ -138,7 +138,15 @@ async function callOpenAIJson(messages, systemPrompt) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.error?.message || `OpenAI API error (${response.status})`);
+    const upstreamMessage = typeof data?.error?.message === 'string' ? data.error.message : '';
+    const isAuthError =
+      response.status === 401 || /incorrect api key|invalid api key|api key/i.test(upstreamMessage);
+
+    if (isAuthError) {
+      throw new Error('OpenAI API の認証に失敗しました。サーバー側の環境変数を確認してください。');
+    }
+
+    throw new Error(`OpenAI API error (${response.status})`);
   }
 
   const content = data?.choices?.[0]?.message?.content;
