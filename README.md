@@ -111,8 +111,8 @@ npm run dev
 
 環境変数（バックエンド側）
 
-- `SEARCH_PROVIDER`（推奨: `serpapi`）
-- `SERPAPI_KEY`
+- `SEARCH_PROVIDER`（推奨: `tavily`）
+- `TAVILY_API_KEY`
 
 旧Google CSE互換（既存利用者向け）
 
@@ -122,7 +122,7 @@ npm run dev
 
 ※ キーをブラウザへ露出させないため、`VITE_` プレフィックスではなくバックエンド環境変数として管理
 
-補足: Custom Search JSON API は新規利用が停止されているため、デフォルト実装は SerpAPI を利用する構成にしています。
+補足: Custom Search JSON API は新規利用が停止されているため、デフォルト実装は Tavily を利用する構成にしています。
 
 ## AI推薦アーキテクチャ（新フロー）
 
@@ -166,3 +166,31 @@ npm run dev
 - `km_stock_items`: 家の食材ストック
 - `km_favorite_recipe_ids`: お気に入り
 - `km_recipe_history`: 閲覧履歴
+
+## Release / Deployment
+
+このリリースブランチでは、Vercel でフロントエンドをホスティングし、Supabase をデータストレージと認証に利用する方向を想定しています。
+
+- フロントエンド: `npm run build` で Vite ビルドを作成し、Vercel にデプロイ
+- 環境変数: `.env.example` を参考に `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` と API 用のキーを設定
+- `APP_ACCESS_PASSWORD` を設定すると、アプリ全体にパスワード保護がかかります。未設定なら保護は無効です。
+- `api/` フォルダに Vercel Functions 用 API を追加しました。フロントエンドの `fetch('/api/...')` 呼び出しは、そのまま Vercel 上の関数に届きます。
+- `shared-data` の永続化は Supabase `shared_data` テーブルに移行済みです。Vercel 環境変数 `SUPABASE_SERVICE_ROLE_KEY` を使い、クライアントには `VITE_` プレフィックスのキーだけを公開します。
+- 現状の `server/api-server.mjs` はローカル開発用です。Vercel に本番デプロイする場合は、`api/` の関数を利用するか、Supabase Edge Functions に移行してください。
+
+### Supabase テーブル構成例
+
+```sql
+create table shared_data (
+  id text primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+```
+
+### いまやるべきこと
+
+1. `release` ブランチで作業を継続
+2. Supabase プロジェクトを作成し、フロントエンドの永続データ連携を実装
+3. `vercel.json` を使って Vercel への静的ホスティングを設定
+4. ローカルでは `npm run dev` と `npm run dev:api` で動作確認

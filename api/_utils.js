@@ -1,17 +1,18 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { JSDOM } from 'jsdom';
+import { createClient } from '@supabase/supabase-js';
 
-const PORT = Number(process.env.API_PORT || 8787);
 const SEARCH_PROVIDER = (process.env.SEARCH_PROVIDER || 'tavily').toLowerCase();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 const GOOGLE_API_KEY = process.env.GOOGLE_SEARCH_API_KEY || process.env.VITE_GOOGLE_SEARCH_API_KEY;
 const GOOGLE_CX = process.env.GOOGLE_SEARCH_CX || process.env.VITE_GOOGLE_SEARCH_CX;
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const APP_ACCESS_PASSWORD = process.env.APP_ACCESS_PASSWORD || '';
-const APP_DB_FILE = new URL('./app-db.json', import.meta.url);
+const APP_DB_FILE = new URL('../app-db.json', import.meta.url);
 const ACCESS_COOKIE_NAME = 'km_access';
 
 const EMPTY_APP_DB = {
@@ -20,49 +21,90 @@ const EMPTY_APP_DB = {
   history: [],
 };
 
-let appDbCache = null;
+const SUPABASE_TABLE = 'shared_data';
+const SUPABASE_ROW_ID = 'shared-data';
+const useSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const supabase = useSupabase
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    })
+  : null;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
 async function loadAppDb() {
-  if (appDbCache) {
-    return appDbCache;
+  if (supabase) {
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select('payload')
+      .eq('id', SUPABASE_ROW_ID)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (data?.payload && typeof data.payload === 'object') {
+      return {
+        stockItems: asArray(data.payload.stockItems),
+        favorites: asArray(data.payload.favorites),
+        history: asArray(data.payload.history),
+      };
+    }
+
+    return { ...EMPTY_APP_DB };
   }
 
   try {
     const raw = await readFile(APP_DB_FILE, 'utf8');
     const parsed = JSON.parse(raw);
 
-    appDbCache = {
+    return {
       stockItems: asArray(parsed.stockItems),
       favorites: asArray(parsed.favorites),
       history: asArray(parsed.history),
     };
   } catch {
-    appDbCache = { ...EMPTY_APP_DB };
-    await writeFile(APP_DB_FILE, `${JSON.stringify(appDbCache, null, 2)}\n`, 'utf8');
+    return { ...EMPTY_APP_DB };
   }
-
-  return appDbCache;
 }
 
 async function saveAppDb(nextDb) {
-  appDbCache = {
+  const payload = {
     stockItems: asArray(nextDb.stockItems),
     favorites: asArray(nextDb.favorites),
     history: asArray(nextDb.history),
   };
 
-  await writeFile(APP_DB_FILE, `${JSON.stringify(appDbCache, null, 2)}\n`, 'utf8');
+  if (supabase) {
+    const { error } = await supabase
+      .from(SUPABASE_TABLE)
+      .upsert(
+        {
+          id: SUPABASE_ROW_ID,
+          payload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' },
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    return payload;
+  }
+
+  await writeFile(APP_DB_FILE, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  return payload;
 }
 
 function sendJson(res, status, body) {
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-  });
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.statusCode = status;
   res.end(JSON.stringify(body));
 }
 
@@ -208,7 +250,6 @@ function getOpenAIConfigError() {
   if (!OPENAI_API_KEY) {
     return 'OPENAI_API_KEY が未設定です。';
   }
-
   return null;
 }
 
@@ -324,7 +365,6 @@ async function scrapeRecipePage(url) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
-    // JSON-LD 優先
     const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
     for (const script of scripts) {
       try {
@@ -357,7 +397,7 @@ async function scrapeRecipePage(url) {
           }
         }
       } catch {
-        // JSONパース失敗は無視
+        // ignore JSON parse errors
       }
     }
 
@@ -516,61 +556,6 @@ async function searchByGoogleCustomSearch(query) {
   };
 }
 
-async function handleWebRecipeSearch(req, res) {
-  if (!ensureAuthorized(req, res)) {
-    return;
-  }
-
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  const query = (url.searchParams.get('query') || '').trim();
-
-  if (!query) {
-    sendJson(res, 400, { error: 'query は必須です。' });
-    return;
-  }
-
-  const configError = getProviderConfigError();
-  if (configError) {
-    sendJson(res, 500, { error: configError });
-    return;
-  }
-
-  try {
-    const result =
-      SEARCH_PROVIDER === 'google'
-        ? await searchByGoogleCustomSearch(query)
-        : await searchByTavily(query);
-
-    if (!result.ok) {
-      sendJson(res, result.status, {
-        error: result.error,
-        provider: SEARCH_PROVIDER,
-      });
-      return;
-    }
-
-    // 上位1件のみ返す＋スクレイピング
-    const top = result.items[0];
-    if (!top) {
-      sendJson(res, 200, { items: [], provider: SEARCH_PROVIDER });
-      return;
-    }
-
-    const scraped = await scrapeRecipePage(top.sourceUrl);
-    const enriched = {
-      ...top,
-      ingredients: scraped.ingredients,
-      steps: scraped.steps,
-      parseStatus: scraped.parseStatus,
-      imageUrl: scraped.imageUrl || top.imageUrl,
-    };
-
-    sendJson(res, 200, { items: [enriched], provider: SEARCH_PROVIDER });
-  } catch {
-    sendJson(res, 500, { error: '検索処理に失敗しました。' });
-  }
-}
-
 async function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -587,253 +572,24 @@ async function readRequestBody(req) {
   });
 }
 
-async function handleTodaysRecipe(req, res) {
-  if (!ensureAuthorized(req, res)) {
-    return;
-  }
-
-  const configError = getTodaysRecipeConfigError();
-  if (configError) {
-    sendJson(res, 500, { error: configError });
-    return;
-  }
-
-  let body;
-  try {
-    body = await readRequestBody(req);
-  } catch {
-    sendJson(res, 400, { error: 'JSON body の読み込みに失敗しました。' });
-    return;
-  }
-
-  const requestText = typeof body?.requestText === 'string' ? body.requestText.trim() : '';
-  const stockItems = normalizeTodaysStockItems(body?.stockItems);
-
-  if (!requestText) {
-    sendJson(res, 400, { error: 'requestText は必須です。' });
-    return;
-  }
-
-  if (stockItems.length === 0) {
-    sendJson(res, 400, { error: 'stockItems は1件以上必要です。' });
-    return;
-  }
-
-  try {
-    const fridgeStockItems = stockItems.filter((item) => item.location === 'fridge');
-    const contextStockItems = fridgeStockItems.length > 0 ? fridgeStockItems : stockItems;
-
-    const searchContext = normalizeTodaysSearchContext(
-      await buildTodaysRecipeSearchContext(requestText, contextStockItems),
-      contextStockItems,
-      requestText,
-    );
-    const searchResult = await searchByTavily(searchContext.searchQuery || requestText);
-
-    if (!searchResult.ok) {
-      sendJson(res, searchResult.status, {
-        error: searchResult.error,
-        provider: 'tavily',
-      });
-      return;
-    }
-
-    const selectedResults = searchResult.items.slice(0, 5);
-    const recipeChoice = await chooseTodaysRecipe(searchContext, selectedResults, requestText, contextStockItems);
-    const selectedIndex = Number.isInteger(recipeChoice?.selectedIndex) ? recipeChoice.selectedIndex : 0;
-    const selectedItem = selectedResults[Math.max(0, Math.min(selectedIndex, selectedResults.length - 1))] || selectedResults[0];
-
-    if (!selectedItem) {
-      sendJson(res, 200, { error: '候補レシピが見つかりませんでした。', items: [], provider: 'tavily' });
-      return;
-    }
-
-    const scraped = await scrapeRecipePage(selectedItem.sourceUrl);
-    const fallbackRecipe = recipeChoice?.recipe || {};
-    const ingredients = scraped.ingredients.length > 0 ? scraped.ingredients : Array.isArray(fallbackRecipe.ingredients) ? fallbackRecipe.ingredients : [];
-    const steps = scraped.steps.length > 0 ? scraped.steps : Array.isArray(fallbackRecipe.steps) ? fallbackRecipe.steps : [];
-
-    const finalRecipe = {
-      id: selectedItem.id,
-      title: fallbackRecipe.title || selectedItem.title,
-      description: fallbackRecipe.description || selectedItem.description,
-      imageUrl: scraped.imageUrl || selectedItem.imageUrl,
-      sourceUrl: selectedItem.sourceUrl,
-      ingredients,
-      steps,
-      parseStatus: scraped.parseStatus === 'failed' && (ingredients.length === 0 || steps.length === 0) ? 'failed' : scraped.parseStatus,
-      searchQuery: searchContext.searchQuery,
-      reasons: Array.isArray(recipeChoice?.reasons) ? recipeChoice.reasons : [],
-      focusIngredients: Array.isArray(searchContext.focusIngredients) ? searchContext.focusIngredients : [],
-    };
-
-    sendJson(res, 200, {
-      provider: 'openai+tavily',
-      searchContext,
-      results: selectedResults,
-      recipe: finalRecipe,
-    });
-  } catch (error) {
-    sendJson(res, 500, {
-      error: error instanceof Error ? error.message : '今日の献立生成に失敗しました。',
-    });
-  }
-}
-
-async function handleSharedDataGet(res) {
-  try {
-    const appDb = await loadAppDb();
-    sendJson(res, 200, appDb);
-  } catch {
-    sendJson(res, 500, { error: '共有データの読み込みに失敗しました。' });
-  }
-}
-
-async function handleSharedDataPut(req, res) {
-  if (!ensureAuthorized(req, res)) {
-    return;
-  }
-
-  let body;
-  try {
-    body = await readRequestBody(req);
-  } catch {
-    sendJson(res, 400, { error: 'JSON body の読み込みに失敗しました。' });
-    return;
-  }
-
-  if (body.stockItems !== undefined && !Array.isArray(body.stockItems)) {
-    sendJson(res, 400, { error: 'stockItems は配列で指定してください。' });
-    return;
-  }
-
-  if (body.favorites !== undefined && !Array.isArray(body.favorites)) {
-    sendJson(res, 400, { error: 'favorites は配列で指定してください。' });
-    return;
-  }
-
-  if (body.history !== undefined && !Array.isArray(body.history)) {
-    sendJson(res, 400, { error: 'history は配列で指定してください。' });
-    return;
-  }
-
-  try {
-    const current = await loadAppDb();
-    const nextDb = {
-      stockItems: body.stockItems ?? current.stockItems,
-      favorites: body.favorites ?? current.favorites,
-      history: body.history ?? current.history,
-    };
-
-    await saveAppDb(nextDb);
-
-    sendJson(res, 200, {
-      ok: true,
-      updatedAt: new Date().toISOString(),
-      ...nextDb,
-    });
-  } catch {
-    sendJson(res, 500, { error: '共有データの保存に失敗しました。' });
-  }
-}
-
-async function handleAccessSession(req, res) {
-  if (req.method === 'GET') {
-    sendJson(res, 200, {
-      authenticated: isAuthorizedRequest(req),
-      protectionEnabled: isAccessProtectionEnabled(),
-    });
-    return;
-  }
-
-  if (req.method === 'POST') {
-    let body;
-    try {
-      body = await readRequestBody(req);
-    } catch {
-      sendJson(res, 400, { error: 'JSON body の読み込みに失敗しました。' });
-      return;
-    }
-
-    const password = typeof body?.password === 'string' ? body.password : '';
-
-    if (!verifyAccessPassword(password)) {
-      clearAccessCookie(res);
-      sendJson(res, 401, { error: 'パスワードが正しくありません。' });
-      return;
-    }
-
-    setAccessCookie(res);
-    sendJson(res, 200, {
-      ok: true,
-      authenticated: true,
-      protectionEnabled: isAccessProtectionEnabled(),
-    });
-    return;
-  }
-
-  if (req.method === 'DELETE') {
-    clearAccessCookie(res);
-    sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  sendJson(res, 405, { error: 'Method not allowed' });
-}
-
-const server = createServer((req, res) => {
-  if (!req.url || !req.method) {
-    sendJson(res, 400, { error: 'invalid request' });
-    return;
-  }
-
-  if (req.method === 'GET' && req.url.startsWith('/api/health')) {
-    const configError = getProviderConfigError();
-    sendJson(res, 200, {
-      ok: true,
-      provider: SEARCH_PROVIDER,
-      ready: !configError,
-      configError,
-      hasOpenAiKey: Boolean(OPENAI_API_KEY),
-      hasTavilyApiKey: Boolean(TAVILY_API_KEY),
-      hasGoogleKey: Boolean(GOOGLE_API_KEY),
-      hasGoogleCx: Boolean(GOOGLE_CX),
-    });
-    return;
-  }
-
-  if (req.url.startsWith('/api/access/session')) {
-    handleAccessSession(req, res);
-    return;
-  }
-
-  if (req.method === 'POST' && req.url.startsWith('/api/todays-recipe')) {
-    handleTodaysRecipe(req, res);
-    return;
-  }
-
-  if (req.method === 'GET' && req.url.startsWith('/api/shared-data')) {
-    if (!ensureAuthorized(req, res)) {
-      return;
-    }
-
-    handleSharedDataGet(res);
-    return;
-  }
-
-  if (req.method === 'PUT' && req.url.startsWith('/api/shared-data')) {
-    handleSharedDataPut(req, res);
-    return;
-  }
-
-  if (req.method === 'GET' && req.url.startsWith('/api/web-recipe-search')) {
-    handleWebRecipeSearch(req, res);
-    return;
-  }
-
-  sendJson(res, 404, { error: 'not found' });
-});
-
-server.listen(PORT, () => {
-  console.log(`[api] listening on http://localhost:${PORT}`);
-});
+export {
+  loadAppDb,
+  saveAppDb,
+  sendJson,
+  ensureAuthorized,
+  isAuthorizedRequest,
+  isAccessProtectionEnabled,
+  setAccessCookie,
+  clearAccessCookie,
+  verifyAccessPassword,
+  readRequestBody,
+  getProviderConfigError,
+  getTodaysRecipeConfigError,
+  normalizeTodaysStockItems,
+  normalizeTodaysSearchContext,
+  buildTodaysRecipeSearchContext,
+  chooseTodaysRecipe,
+  scrapeRecipePage,
+  searchByTavily,
+  searchByGoogleCustomSearch,
+};
