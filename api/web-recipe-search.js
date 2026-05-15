@@ -2,8 +2,7 @@ import {
   sendJson,
   ensureAuthorized,
   getProviderConfigError,
-  searchByTavily,
-  searchByGoogleCustomSearch,
+  searchByCookpad,
   scrapeRecipePage,
 } from './_utils.js';
 
@@ -32,22 +31,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result =
-      process.env.SEARCH_PROVIDER === 'google'
-        ? await searchByGoogleCustomSearch(query)
-        : await searchByTavily(query);
+    const result = await searchByCookpad(query);
 
     if (!result.ok) {
-      sendJson(res, result.status, {
-        error: result.error,
-        provider: process.env.SEARCH_PROVIDER || 'tavily',
-      });
+      sendJson(res, result.status, { error: result.error, provider: 'cookpad' });
       return;
     }
 
     const top = result.items[0];
     if (!top) {
-      sendJson(res, 200, { items: [], provider: process.env.SEARCH_PROVIDER || 'tavily' });
+      sendJson(res, 200, { items: [], provider: 'cookpad' });
       return;
     }
 
@@ -60,7 +53,7 @@ export default async function handler(req, res) {
       imageUrl: scraped.imageUrl || top.imageUrl,
     };
 
-    sendJson(res, 200, { items: [enriched], provider: process.env.SEARCH_PROVIDER || 'tavily' });
+    sendJson(res, 200, { items: [enriched], provider: 'cookpad' });
   } catch (error) {
     sendJson(res, 500, { error: '検索処理に失敗しました。' });
   }

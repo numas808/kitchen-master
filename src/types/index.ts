@@ -17,6 +17,7 @@ export interface StockItem {
   expiryDate: string;
   note: string;
   createdAt: string;
+  stockLevel: number;
 }
 
 export interface WebRecipeResult {
