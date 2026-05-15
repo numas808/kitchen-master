@@ -471,6 +471,10 @@ async function chooseTodaysRecipe(searchContext, serpResults, requestText, stock
 }
 
 function getProviderConfigError() {
+  if (SEARCH_PROVIDER === 'cookpad') {
+    return null;
+  }
+
   if (SEARCH_PROVIDER === 'tavily') {
     if (!TAVILY_API_KEY) {
       return 'TAVILY_API_KEY が未設定です。';
@@ -525,6 +529,99 @@ async function searchByTavily(query) {
     error: null,
     items: (data.results || []).slice(0, 8).map(normalizeTavilyItem),
   };
+}
+
+async function searchByCookpad(query) {
+  const searchUrl = `https://cookpad.com/search/${encodeURIComponent(query)}`;
+
+  let html;
+  try {
+    const res = await fetch(searchUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'ja,en;q=0.9',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        error: `Cookpad 検索ページの取得に失敗しました (${res.status})`,
+        items: [],
+      };
+    }
+
+    html = await res.text();
+  } catch (err) {
+    return {
+      ok: false,
+      status: 500,
+      error: `Cookpad への接続に失敗しました: ${err instanceof Error ? err.message : String(err)}`,
+      items: [],
+    };
+  }
+
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  // レシピ href を持つ <a> タグを収集（重複排除）
+  const RECIPE_PATH_RE = /^\/recipe\/(\d+)/;
+  const seen = new Set();
+  const items = [];
+
+  for (const anchor of document.querySelectorAll('a[href]')) {
+    const href = anchor.getAttribute('href') || '';
+    const match = href.match(RECIPE_PATH_RE);
+    if (!match) continue;
+
+    const recipeId = match[1];
+    if (seen.has(recipeId)) continue;
+    seen.add(recipeId);
+
+    const sourceUrl = `https://cookpad.com/recipe/${recipeId}`;
+
+    // タイトル: 近傍の h2 > a、または <h2>、またはリンクテキスト
+    const container = anchor.closest('li') || anchor.closest('article') || anchor.parentElement;
+    const titleEl =
+      container?.querySelector('h2') ||
+      container?.querySelector('[class*="title"]') ||
+      anchor;
+    const title = (titleEl?.textContent || '').trim() || 'タイトル不明';
+
+    // 画像: 近傍の <img>
+    const imgEl = container?.querySelector('img');
+    const imageUrl =
+      imgEl?.getAttribute('src') ||
+      imgEl?.getAttribute('data-src') ||
+      `https://picsum.photos/seed/cookpad${recipeId}/400/300`;
+
+    // 説明文: 近傍の <p>
+    const descEl = container?.querySelector('p');
+    const description = (descEl?.textContent || '').trim();
+
+    items.push({
+      id: `web-cookpad-${recipeId}`,
+      title,
+      description,
+      imageUrl,
+      sourceUrl,
+      ingredients: [],
+      steps: [],
+      parseStatus: 'failed',
+    });
+
+    if (items.length >= 8) break;
+  }
+
+  if (items.length === 0) {
+    return { ok: true, status: 200, error: null, items: [] };
+  }
+
+  return { ok: true, status: 200, error: null, items };
 }
 
 async function searchByGoogleCustomSearch(query) {
@@ -592,4 +689,5 @@ export {
   scrapeRecipePage,
   searchByTavily,
   searchByGoogleCustomSearch,
+  searchByCookpad,
 };
