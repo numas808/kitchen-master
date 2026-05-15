@@ -60,13 +60,13 @@ function expiresSoon(expiryDate: string): boolean {
 function stockLevelColor(level: number): string {
   if (level <= 20) return '#ef4444';
   if (level <= 50) return '#f59e0b';
-  return '#1F6B5B';
+  return '#7a5c3e';
 }
 
 function stockLevelTextClass(level: number): string {
   if (level <= 20) return 'text-red-500';
   if (level <= 50) return 'text-amber-500';
-  return 'text-[#1F6B5B]';
+  return 'text-[#7a5c3e]';
 }
 
 function formatStockText(items: StockItem[]): string {
@@ -177,19 +177,19 @@ export default function Stock() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] pb-10">
+    <div className="min-h-screen bg-[#f6f0e7] pb-10">
       <AppHeader />
 
       <div className="p-5 space-y-5">
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <h1 className="text-3xl font-black tracking-[0.12em] text-[#1F6B5B]">STOCK HUB</h1>
-          <p className="mt-2 text-sm text-gray-500">食材の在庫、期限、メモをまとめて管理できます。</p>
+        <div className="rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-5 shadow-[0_8px_22px_rgba(101,75,49,0.12)]">
+          <h1 className="text-3xl font-black tracking-[0.12em] text-[#7a5c3e]">STOCK HUB</h1>
+          <p className="mt-2 text-sm text-[#7b6a5a]">食材の在庫、期限、メモをまとめて管理できます。</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
+        <div className="rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-4 shadow-[0_8px_22px_rgba(101,75,49,0.12)] space-y-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">在庫を登録</h2>
-            <p className="text-xs text-gray-500 mt-1">所在地、種類、購入日、期限を付けて管理します。</p>
+            <h2 className="text-lg font-bold text-[#3f3328]">在庫を登録</h2>
+            <p className="mt-1 text-xs text-[#7b6a5a]">所在地、種類、購入日、期限を付けて管理します。</p>
           </div>
 
           <div className="space-y-3">
@@ -197,7 +197,7 @@ export default function Stock() {
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="品名を入力"
-              className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#FF6B35]"
+              className="w-full rounded-2xl border border-[#ddc9b1] bg-[#fffdf9] px-4 py-3 text-sm focus:outline-none focus:border-[#b89168]"
             />
 
             <div className="grid grid-cols-2 gap-3">
@@ -206,7 +206,7 @@ export default function Stock() {
                 <select
                   value={form.location}
                   onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value as StockLocation }))}
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm bg-white focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full rounded-2xl border border-[#ddc9b1] bg-[#fffdf9] px-4 py-3 text-sm focus:outline-none focus:border-[#b89168]"
                 >
                   <option value="fridge">冷蔵庫</option>
                   <option value="freezer">冷凍庫</option>
@@ -218,7 +218,7 @@ export default function Stock() {
                 <select
                   value={form.category}
                   onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value as StockCategory }))}
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm bg-white focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full rounded-2xl border border-[#ddc9b1] bg-[#fffdf9] px-4 py-3 text-sm focus:outline-none focus:border-[#b89168]"
                 >
                   <option value="drink">飲料</option>
                   <option value="food">食品</option>
@@ -234,7 +234,7 @@ export default function Stock() {
                   type="date"
                   value={form.purchaseDate}
                   onChange={(e) => setForm((prev) => ({ ...prev, purchaseDate: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full rounded-2xl border border-[#ddc9b1] bg-[#fffdf9] px-4 py-3 text-sm focus:outline-none focus:border-[#b89168]"
                 />
               </label>
 
@@ -244,7 +244,7 @@ export default function Stock() {
                   type="date"
                   value={form.expiryDate}
                   onChange={(e) => setForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full rounded-2xl border border-[#ddc9b1] bg-[#fffdf9] px-4 py-3 text-sm focus:outline-none focus:border-[#b89168]"
                 />
               </label>
             </div>
@@ -254,13 +254,13 @@ export default function Stock() {
               onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))}
               placeholder="メモがあれば入力"
               rows={3}
-              className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-[#FF6B35]"
+              className="w-full resize-none rounded-2xl border border-[#ddc9b1] bg-[#fffdf9] px-4 py-3 text-sm focus:outline-none focus:border-[#b89168]"
             />
 
             <button
               onClick={addStockItem}
               disabled={!form.name.trim()}
-              className="w-full px-4 py-3 bg-[#FF6B35] text-white rounded-2xl text-sm font-bold disabled:bg-gray-300"
+              className="w-full rounded-2xl bg-[#b89168] px-4 py-3 text-sm font-bold text-[#fff8ed] transition hover:bg-[#a27d56] disabled:bg-gray-300"
             >
               在庫に追加
             </button>
@@ -268,9 +268,9 @@ export default function Stock() {
         </div>
 
         {(['fridge', 'freezer'] as const).map((location) => (
-          <section key={location} className="bg-white rounded-2xl shadow-sm p-4">
+          <section key={location} className="rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-4 shadow-[0_8px_22px_rgba(101,75,49,0.1)]">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-gray-800">{locationLabels[location]}</h2>
+                      <h2 className="text-lg font-bold text-[#3f3328]">{locationLabels[location]}</h2>
               <span className="text-xs font-bold text-gray-400">{groupedItems[location].length}件</span>
             </div>
 
@@ -283,12 +283,12 @@ export default function Stock() {
                   const soon = expiresSoon(item.expiryDate);
 
                   return (
-                    <div key={item.id} className="rounded-2xl border border-gray-100 bg-[#FCFCFB] p-4">
+                     <div key={item.id} className="rounded-2xl border border-[#efe5d8] bg-[#fdf6ea] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-sm font-bold text-gray-800">{item.name}</h3>
-                            <span className="px-2 py-1 rounded-full bg-[#FFEDE6] text-[#D65428] text-[11px] font-bold">
+                            <h3 className="text-sm font-bold text-[#3f3328]">{item.name}</h3>
+                            <span className="rounded-full bg-[#f0dfc8] px-2 py-1 text-[11px] font-bold text-[#7a5c3e]">
                               {categoryLabels[item.category]}
                             </span>
                             {expired && (
@@ -353,7 +353,7 @@ export default function Stock() {
         <button
           onClick={handleExport}
           disabled={stockItems.length === 0}
-          className="w-full py-3 text-sm font-bold rounded-2xl bg-[#1F6B5B] text-white disabled:bg-gray-300"
+          className="w-full rounded-2xl bg-[#7a5c3e] py-3 text-sm font-bold text-[#fff8ed] transition hover:bg-[#664b31] disabled:bg-gray-300"
         >
           TXT出力
         </button>

@@ -5,8 +5,9 @@
 @tailwind utilities;
 
 body {
-  background-color: #FAFAF8;
+  background-color: #f6f0e7;
   font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  color: #4b3f33;
 }
 
 * {

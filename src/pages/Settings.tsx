@@ -50,14 +50,14 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-[#f6f0e7]">
       <AppHeader />
 
       <div className="p-5 space-y-6">
         {/* Food preferences */}
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <h2 className="text-lg font-bold text-gray-800 mb-1">好みの食材</h2>
-          <p className="text-sm text-gray-500 mb-4">優先して表示される食材カテゴリ</p>
+        <div className="rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-5 shadow-[0_8px_22px_rgba(101,75,49,0.12)]">
+          <h2 className="mb-1 text-lg font-bold text-[#3f3328]">好みの食材</h2>
+          <p className="mb-4 text-sm text-[#7b6a5a]">優先して表示される食材カテゴリ</p>
           <div className="flex flex-wrap gap-3">
             {CATEGORIES.map(cat => (
               <button
@@ -65,8 +65,8 @@ export default function Settings() {
                 onClick={() => togglePreference(cat.value)}
                 className={`px-4 py-2 rounded-full font-medium text-sm transition ${
                   settings.foodPreferences.includes(cat.value)
-                    ? 'bg-[#FF6B35] text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#b89168] text-[#fff8ed] shadow-md'
+                    : 'bg-[#efe3d3] text-[#6b543d] hover:bg-[#e6d7c3]'
                 }`}
               >
                 {cat.label}
@@ -76,9 +76,9 @@ export default function Settings() {
         </div>
 
         {/* NG ingredients */}
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <h2 className="text-lg font-bold text-gray-800 mb-1">NGな食材</h2>
-          <p className="text-sm text-gray-500 mb-4">苦手な食材はスワイプ対象から除外されます</p>
+        <div className="rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-5 shadow-[0_8px_22px_rgba(101,75,49,0.12)]">
+          <h2 className="mb-1 text-lg font-bold text-[#3f3328]">NGな食材</h2>
+          <p className="mb-4 text-sm text-[#7b6a5a]">苦手な食材はスワイプ対象から除外されます</p>
           <div className="flex gap-2 mb-3">
             <input
               type="text"
@@ -86,11 +86,11 @@ export default function Settings() {
               onChange={e => setNgInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addNgIngredient()}
               placeholder="例：えび、ナッツ"
-              className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-[#FF6B35]"
+              className="flex-1 rounded-full border border-[#ddc9b1] bg-[#fffdf9] px-4 py-2 text-sm focus:outline-none focus:border-[#b89168]"
             />
             <button
               onClick={addNgIngredient}
-              className="px-4 py-2 bg-[#FF6B35] text-white rounded-full text-sm font-medium hover:bg-orange-500 transition"
+              className="rounded-full bg-[#b89168] px-4 py-2 text-sm font-medium text-[#fff8ed] transition hover:bg-[#a27d56]"
             >
               追加
             </button>
@@ -100,14 +100,11 @@ export default function Settings() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {settings.ngIngredients.map(ng => (
-                <span
-                  key={ng}
-                  className="flex items-center gap-1 bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm"
-                >
+                <span key={ng} className="flex items-center gap-1 rounded-full bg-[#f0dfc8] px-3 py-1 text-sm text-[#7a5c3e]">
                   {ng}
                   <button
                     onClick={() => removeNgIngredient(ng)}
-                    className="text-red-400 hover:text-red-600 ml-1 font-bold"
+                    className="ml-1 font-bold text-[#a27d56] hover:text-[#7a5c3e]"
                   >
                     ×
                   </button>
@@ -118,9 +115,9 @@ export default function Settings() {
         </div>
 
         {/* Cooking time */}
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <h2 className="text-lg font-bold text-gray-800 mb-1">調理時間</h2>
-          <p className="text-sm text-gray-500 mb-4">最大調理時間でフィルタリング</p>
+        <div className="rounded-2xl border border-[#eadfce] bg-[#fffaf2] p-5 shadow-[0_8px_22px_rgba(101,75,49,0.12)]">
+          <h2 className="mb-1 text-lg font-bold text-[#3f3328]">調理時間</h2>
+          <p className="mb-4 text-sm text-[#7b6a5a]">最大調理時間でフィルタリング</p>
           <div className="flex flex-wrap gap-3">
             {TIME_OPTIONS.map(opt => (
               <button
@@ -128,8 +125,8 @@ export default function Settings() {
                 onClick={() => setSettings(prev => ({ ...prev, maxCookingTime: opt.value }))}
                 className={`px-4 py-2 rounded-full font-medium text-sm transition ${
                   settings.maxCookingTime === opt.value
-                    ? 'bg-[#FF6B35] text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#b89168] text-[#fff8ed] shadow-md'
+                    : 'bg-[#efe3d3] text-[#6b543d] hover:bg-[#e6d7c3]'
                 }`}
               >
                 {opt.label}
@@ -138,7 +135,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400">設定は自動保存されます</p>
+        <p className="text-center text-xs text-[#9a8875]">設定は自動保存されます</p>
       </div>
     </div>
   );
