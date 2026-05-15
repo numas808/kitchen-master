@@ -57,6 +57,18 @@ function expiresSoon(expiryDate: string): boolean {
   return days >= 0 && days <= 3;
 }
 
+function stockLevelColor(level: number): string {
+  if (level <= 20) return '#ef4444';
+  if (level <= 50) return '#f59e0b';
+  return '#1F6B5B';
+}
+
+function stockLevelTextClass(level: number): string {
+  if (level <= 20) return 'text-red-500';
+  if (level <= 50) return 'text-amber-500';
+  return 'text-[#1F6B5B]';
+}
+
 function formatStockText(items: StockItem[]): string {
   const now = new Date();
   const lines = [
@@ -303,15 +315,7 @@ export default function Stock() {
                           <div className="mt-3">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-bold text-gray-400">残量</span>
-                              <span
-                                className={`text-xs font-bold ${
-                                  item.stockLevel <= 20
-                                    ? 'text-red-500'
-                                    : item.stockLevel <= 50
-                                    ? 'text-amber-500'
-                                    : 'text-[#1F6B5B]'
-                                }`}
-                              >
+                              <span className={`text-xs font-bold ${stockLevelTextClass(item.stockLevel)}`}>
                                 {item.stockLevel}%
                               </span>
                             </div>
@@ -322,7 +326,11 @@ export default function Stock() {
                               step={10}
                               value={item.stockLevel}
                               onChange={(e) => updateStockLevel(item.id, Number(e.target.value))}
-                              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#FF6B35]"
+                              className="w-full h-4 rounded-full cursor-pointer"
+                              style={{
+                                color: stockLevelColor(item.stockLevel),
+                                background: `linear-gradient(to right, ${stockLevelColor(item.stockLevel)} ${item.stockLevel}%, #e5e7eb ${item.stockLevel}%)`,
+                              }}
                             />
                           </div>
                           {item.note && <p className="mt-3 text-xs leading-relaxed text-gray-600">メモ: {item.note}</p>}

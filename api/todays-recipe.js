@@ -7,7 +7,6 @@ import {
   normalizeTodaysSearchContext,
   buildTodaysRecipeSearchContext,
   chooseTodaysRecipe,
-  searchByTavily,
   searchByCookpad,
   scrapeRecipePage,
 } from './_utils.js';
@@ -58,16 +57,12 @@ export default async function handler(req, res) {
       contextStockItems,
       requestText,
     );
-    const searchProvider = process.env.SEARCH_PROVIDER || 'cookpad';
-    const searchResult =
-      searchProvider === 'cookpad'
-        ? await searchByCookpad(searchContext.searchQuery || requestText)
-        : await searchByTavily(searchContext.searchQuery || requestText);
+    const searchResult = await searchByCookpad(searchContext.searchQuery || requestText);
 
     if (!searchResult.ok) {
       sendJson(res, searchResult.status, {
         error: searchResult.error,
-        provider: searchProvider,
+        provider: 'cookpad',
       });
       return;
     }
@@ -78,7 +73,7 @@ export default async function handler(req, res) {
     const selectedItem = selectedResults[Math.max(0, Math.min(selectedIndex, selectedResults.length - 1))] || selectedResults[0];
 
     if (!selectedItem) {
-      sendJson(res, 200, { error: '候補レシピが見つかりませんでした。', items: [], provider: searchProvider });
+      sendJson(res, 200, { error: '候補レシピが見つかりませんでした。', items: [], provider: 'cookpad' });
       return;
     }
 
@@ -102,7 +97,7 @@ export default async function handler(req, res) {
     };
 
     sendJson(res, 200, {
-      provider: `openai+${searchProvider}`,
+      provider: 'openai+cookpad',
       searchContext,
       results: selectedResults,
       recipe: finalRecipe,

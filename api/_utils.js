@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { createClient } from '@supabase/supabase-js';
 
-const SEARCH_PROVIDER = (process.env.SEARCH_PROVIDER || 'tavily').toLowerCase();
+const SEARCH_PROVIDER = (process.env.SEARCH_PROVIDER || 'cookpad').toLowerCase();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
