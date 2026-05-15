@@ -16,6 +16,7 @@ function createLegacyStockItem(name: string, index: number): StockItem {
     expiryDate: '',
     note: '',
     createdAt: now,
+    stockLevel: 100,
   };
 }
 
@@ -52,6 +53,7 @@ function normalizeStockItem(value: unknown, index: number): StockItem | null {
     expiryDate: typeof item.expiryDate === 'string' ? item.expiryDate : '',
     note: typeof item.note === 'string' ? item.note : '',
     createdAt: typeof item.createdAt === 'string' && item.createdAt ? item.createdAt : new Date().toISOString(),
+    stockLevel: typeof item.stockLevel === 'number' && item.stockLevel >= 0 && item.stockLevel <= 100 ? item.stockLevel : 100,
   };
 }
 

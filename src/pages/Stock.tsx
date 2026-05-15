@@ -79,6 +79,7 @@ function formatStockText(items: StockItem[]): string {
       lines.push(
         `- ${item.name}`,
         `  種類: ${categoryLabels[item.category]}`,
+        `  残量: ${item.stockLevel}%`,
         `  購入日: ${item.purchaseDate || '未設定'}`,
         `  期限: ${item.expiryDate || '未設定'}`,
         `  メモ: ${item.note || 'なし'}`
@@ -142,6 +143,7 @@ export default function Stock() {
       expiryDate: form.expiryDate,
       note: form.note.trim(),
       createdAt: new Date().toISOString(),
+      stockLevel: 100,
     };
 
     setStockItems((prev) => [item, ...prev]);
@@ -150,6 +152,12 @@ export default function Stock() {
 
   const removeStockItem = (id: string) => {
     setStockItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const updateStockLevel = (id: string, level: number) => {
+    setStockItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, stockLevel: level } : item))
+    );
   };
 
   const handleExport = () => {
@@ -292,6 +300,31 @@ export default function Stock() {
                               <dd>{item.expiryDate || '未設定'}</dd>
                             </div>
                           </dl>
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-gray-400">残量</span>
+                              <span
+                                className={`text-xs font-bold ${
+                                  item.stockLevel <= 20
+                                    ? 'text-red-500'
+                                    : item.stockLevel <= 50
+                                    ? 'text-amber-500'
+                                    : 'text-[#1F6B5B]'
+                                }`}
+                              >
+                                {item.stockLevel}%
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={10}
+                              value={item.stockLevel}
+                              onChange={(e) => updateStockLevel(item.id, Number(e.target.value))}
+                              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#FF6B35]"
+                            />
+                          </div>
                           {item.note && <p className="mt-3 text-xs leading-relaxed text-gray-600">メモ: {item.note}</p>}
                         </div>
                         <button
