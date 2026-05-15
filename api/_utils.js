@@ -7,6 +7,10 @@ const SEARCH_PROVIDER = (process.env.SEARCH_PROVIDER || 'cookpad').toLowerCase()
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+const TAVILY_INCLUDE_DOMAINS = (process.env.TAVILY_INCLUDE_DOMAINS || 'cookpad.com')
+  .split(',')
+  .map((domain) => domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, ''))
+  .filter(Boolean);
 const GOOGLE_API_KEY = process.env.GOOGLE_SEARCH_API_KEY || process.env.VITE_GOOGLE_SEARCH_API_KEY;
 const GOOGLE_CX = process.env.GOOGLE_SEARCH_CX || process.env.VITE_GOOGLE_SEARCH_CX;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -234,6 +238,19 @@ function normalizeTavilyItem(item, index) {
     steps: [],
     parseStatus: 'failed',
   };
+}
+
+function isAllowedDomain(url, allowedDomains) {
+  if (!Array.isArray(allowedDomains) || allowedDomains.length === 0) {
+    return true;
+  }
+
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+    return allowedDomains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
 }
 
 function extractJsonBlock(value) {
@@ -493,10 +510,11 @@ function getProviderConfigError() {
 }
 
 function getTodaysRecipeConfigError() {
-  return getOpenAIConfigError();
+  return getOpenAIConfigError() || getProviderConfigError();
 }
 
 async function searchByTavily(query) {
+  const includeDomains = TAVILY_INCLUDE_DOMAINS;
   const response = await fetch('https://api.tavily.com/search', {
     method: 'POST',
     headers: {
@@ -510,6 +528,7 @@ async function searchByTavily(query) {
       max_results: 8,
       include_images: true,
       include_image_descriptions: false,
+      ...(includeDomains.length > 0 ? { include_domains: includeDomains } : {}),
     }),
   });
   const data = await response.json();
@@ -527,7 +546,10 @@ async function searchByTavily(query) {
     ok: true,
     status: 200,
     error: null,
-    items: (data.results || []).slice(0, 8).map(normalizeTavilyItem),
+    items: (data.results || [])
+      .filter((item) => isAllowedDomain(item?.url, includeDomains))
+      .slice(0, 8)
+      .map(normalizeTavilyItem),
   };
 }
 
@@ -653,6 +675,21 @@ async function searchByGoogleCustomSearch(query) {
   };
 }
 
+async function searchRecipesByProvider(query) {
+  if (SEARCH_PROVIDER === 'tavily') {
+    const result = await searchByTavily(query);
+    return { ...result, provider: 'tavily' };
+  }
+
+  if (SEARCH_PROVIDER === 'google') {
+    const result = await searchByGoogleCustomSearch(query);
+    return { ...result, provider: 'google' };
+  }
+
+  const result = await searchByCookpad(query);
+  return { ...result, provider: 'cookpad' };
+}
+
 async function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -690,4 +727,5 @@ export {
   searchByTavily,
   searchByGoogleCustomSearch,
   searchByCookpad,
+  searchRecipesByProvider,
 };

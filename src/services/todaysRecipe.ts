@@ -22,10 +22,23 @@ export async function generateTodaysRecipe(payload: TodaysRecipeRequestPayload) 
     body: JSON.stringify(payload),
   });
 
-  const data: TodaysRecipeApiResponse = await response.json();
+  let data: TodaysRecipeApiResponse;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(response.ok ? '今日の献立APIの応答形式が不正です。' : `今日の献立APIエラー (${response.status})`);
+  }
 
   if (!response.ok) {
     throw new Error(data.error ?? `今日の献立APIエラー (${response.status})`);
+  }
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  if (!data.recipe) {
+    throw new Error('候補レシピが見つかりませんでした。条件を変えて再度お試しください。');
   }
 
   return data;
