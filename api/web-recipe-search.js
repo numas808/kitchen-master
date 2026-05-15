@@ -2,7 +2,7 @@ import {
   sendJson,
   ensureAuthorized,
   getProviderConfigError,
-  searchByCookpad,
+  searchRecipesByProvider,
   scrapeRecipePage,
 } from './_utils.js';
 
@@ -31,16 +31,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await searchByCookpad(query);
+    const result = await searchRecipesByProvider(query);
 
     if (!result.ok) {
-      sendJson(res, result.status, { error: result.error, provider: 'cookpad' });
+      sendJson(res, result.status, { error: result.error, provider: result.provider });
       return;
     }
 
     const top = result.items[0];
     if (!top) {
-      sendJson(res, 200, { items: [], provider: 'cookpad' });
+      sendJson(res, 200, { items: [], provider: result.provider });
       return;
     }
 
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       imageUrl: scraped.imageUrl || top.imageUrl,
     };
 
-    sendJson(res, 200, { items: [enriched], provider: 'cookpad' });
+    sendJson(res, 200, { items: [enriched], provider: result.provider });
   } catch (error) {
     sendJson(res, 500, { error: '検索処理に失敗しました。' });
   }

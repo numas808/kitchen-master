@@ -113,6 +113,7 @@ npm run dev
 
 - `SEARCH_PROVIDER`（推奨: `tavily`）
 - `TAVILY_API_KEY`
+- `TAVILY_INCLUDE_DOMAINS`（任意・カンマ区切り。例: `cookpad.com`）
 
 旧Google CSE互換（既存利用者向け）
 
