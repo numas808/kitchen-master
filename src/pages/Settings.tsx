@@ -50,7 +50,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-[#FFF8EF]">
       <AppHeader />
 
       <div className="p-5 space-y-6">
