@@ -305,8 +305,9 @@ export default function Home() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating || (!requestText.trim() && selectedFilter === 'all')}
-          className="w-full rounded-2xl bg-[#1A5C4A] py-3 text-sm font-semibold text-white transition disabled:bg-gray-300"
+          className="w-full rounded-2xl bg-[#1A5C4A] py-3 text-sm font-semibold text-white transition disabled:bg-gray-300 flex items-center justify-center gap-2"
         >
+          <SendIcon />
           レシピを提案する
         </button>
 
@@ -327,7 +328,8 @@ export default function Home() {
           </div>
 
           {isGenerating && hasSearched && (
-            <div className="rounded-2xl bg-white shadow-sm p-4 text-sm text-[#8F8F92]">
+            <div className="rounded-2xl bg-white shadow-sm p-4 text-sm text-[#8F8F92] flex items-center justify-center gap-2">
+              <SpinnerIcon />
               検索中...
             </div>
           )}
