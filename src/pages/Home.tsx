@@ -206,7 +206,7 @@ function RecipeCard({ recipe, variant }: { recipe: TodaysRecipeResult; variant: 
       {/* CTA */}
       <button
         onClick={() => window.open(recipe.sourceUrl, '_blank')}
-        className="w-full rounded-full bg-[#88D9A1] py-4 text-base font-semibold text-white"
+        className="w-full rounded-full bg-[#F28A1D] py-4 text-base font-semibold text-white"
       >
         このレシピを見る →
       </button>
@@ -262,7 +262,7 @@ export default function Home() {
         </div>
 
         {/* C. Text input */}
-        <div className="rounded-full bg-[#F2FAF4] flex items-center px-4 py-3 gap-3">
+        <div className="rounded-full bg-[#FFF2E5] flex items-center px-4 py-3 gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#8F8F92] shadow-sm">
             <SearchIcon />
           </span>
@@ -288,7 +288,7 @@ export default function Home() {
                 onClick={() => handleFilterSelect(f.id)}
                 className={`flex flex-col items-center gap-2 flex-shrink-0 rounded-full px-4 py-3 border transition ${
                   active
-                    ? 'bg-[#88D9A1] text-white border-[#88D9A1]'
+                    ? 'bg-[#F28A1D] text-white border-[#F28A1D]'
                     : 'bg-white border-gray-200 text-black'
                 }`}
               >
@@ -304,7 +304,7 @@ export default function Home() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="w-full rounded-2xl bg-[#8BD9A5] py-4 text-sm font-semibold text-white transition disabled:bg-gray-200 disabled:text-gray-500 flex items-center justify-center gap-2"
+          className="w-full rounded-2xl bg-[#F28A1D] py-4 text-sm font-semibold text-white transition disabled:bg-gray-200 disabled:text-gray-500 flex items-center justify-center gap-2"
         >
           <SendIcon />
           レシピを提案する
@@ -338,7 +338,7 @@ export default function Home() {
               <p className="text-sm text-red-500">{generateError}</p>
               <button
                 onClick={handleGenerate}
-                className="rounded-full border border-[#8BD9A5] px-4 py-2 text-xs font-bold text-[#0E7243]"
+                className="rounded-full border border-[#F28A1D] px-4 py-2 text-xs font-bold text-[#F28A1D]"
               >
                 再試行
               </button>
@@ -364,9 +364,9 @@ export default function Home() {
         {/* F. Fridge banner */}
         <button
           onClick={() => navigate('/stockhub')}
-          className="w-full bg-[#E6F8E8] rounded-2xl p-4 flex items-center gap-3 text-left"
+          className="w-full bg-[#FCE8D3] rounded-2xl p-4 flex items-center gap-3 text-left"
         >
-          <span className="text-[#0F6D35]">
+          <span className="text-[#F28A1D]">
             <FridgeIcon />
           </span>
           <div className="flex-1 min-w-0">
