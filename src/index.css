@@ -13,6 +13,15 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;

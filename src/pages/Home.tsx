@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';
 import { useStock } from '../hooks/useStock';
@@ -111,12 +111,17 @@ const FILTERS = [
   { id: 'japanese', label: '和食', icon: <RiceBowlIcon />, text: '和食のレシピ' },
 ] as const;
 
-const DEFAULT_TEXT = '今日は15〜20分で、あたたかくて満足感のあるごはんが食べたい';
+const DEFAULT_TEXT = '';
 
 // ---------- RecipeCard ----------
 
 function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
   const [showReasons, setShowReasons] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   let hostname: string;
   try {
@@ -129,7 +134,12 @@ function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
   const extraCount = recipe.ingredients.length - displayIngredients.length;
 
   return (
-    <div className="rounded-2xl bg-white shadow-sm p-4 space-y-3" data-swipeable>
+    <div
+      className={`rounded-2xl bg-white shadow-sm p-4 space-y-3 transition-all duration-300 ease-out ${
+        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+      }`}
+      data-swipeable
+    >
       {/* Title & description */}
       <div>
         <h3 className="text-xl font-bold text-[#3D2B1F]">{recipe.title}</h3>
@@ -215,21 +225,24 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<TodaysRecipeResult | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const handleFilterSelect = (filterId: string, filterText: string) => {
+  const handleFilterSelect = (filterId: string) => {
     setSelectedFilter(filterId);
-    setRequestText(filterId === 'all' ? DEFAULT_TEXT : filterText);
   };
 
   const handleGenerate = async () => {
     const trimmed = requestText.trim();
-    if (!trimmed) return;
+    const selectedFilterText = FILTERS.find((item) => item.id === selectedFilter)?.text ?? '';
+    const query = trimmed || (selectedFilter !== 'all' ? selectedFilterText : '');
+    if (!query) return;
 
+    setHasSearched(true);
     setIsGenerating(true);
     setGenerateError(null);
 
     try {
-      const response = await generateTodaysRecipe({ requestText: trimmed, stockItems });
+      const response = await generateTodaysRecipe({ requestText: query, stockItems });
       setRecipe(response.recipe ?? null);
     } catch (caught) {
       setRecipe(null);
@@ -246,13 +259,12 @@ export default function Home() {
       <div className="p-5 space-y-5">
         {/* B. Title area */}
         <div>
-          <h1 className="text-2xl font-black text-[#1A5C4A]">今日どうする？</h1>
-          <p className="mt-1 text-sm text-[#A09080]">あなたにぴったりのレシピを提案します</p>
+          <h1 className="text-2xl font-black text-black">今日どうする？</h1>
         </div>
 
         {/* C. Text input */}
-        <div className="rounded-full bg-[#FFF0E0] flex items-center px-4 py-3 gap-2">
-          <span className="text-[#A09080] flex-shrink-0">
+        <div className="rounded-full bg-[#F4F4F6] flex items-center px-4 py-3 gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#8F8F92] shadow-sm">
             <SearchIcon />
           </span>
           <input
@@ -260,20 +272,11 @@ export default function Home() {
             value={requestText}
             onChange={(e) => {
               setRequestText(e.target.value);
-              setSelectedFilter('all');
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-            className="bg-transparent flex-1 text-sm outline-none text-[#3D2B1F] placeholder:text-[#A09080]"
-            placeholder="例：10分以内で作れるヘルシーなレシピ"
+            className="bg-transparent flex-1 text-sm font-medium text-[#1A1A1A] outline-none placeholder:text-[#8F8F92]"
+            placeholder="今日の気分は？"
           />
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || requestText.trim().length === 0}
-            className="w-9 h-9 rounded-full bg-[#1A5C4A] flex items-center justify-center flex-shrink-0 disabled:bg-gray-300 transition"
-            aria-label="レシピを提案する"
-          >
-            <SendIcon />
-          </button>
         </div>
 
         {/* D. Quick filter chips */}
@@ -283,19 +286,29 @@ export default function Home() {
             return (
               <button
                 key={f.id}
-                onClick={() => handleFilterSelect(f.id, f.text)}
-                className={`flex flex-col items-center gap-1 flex-shrink-0 rounded-2xl px-4 py-2.5 border transition ${
+                onClick={() => handleFilterSelect(f.id)}
+                className={`flex flex-col items-center gap-2 flex-shrink-0 rounded-full px-4 py-3 border transition ${
                   active
                     ? 'bg-[#1A5C4A] text-white border-[#1A5C4A]'
                     : 'bg-white border-gray-200 text-[#3D2B1F]'
                 }`}
               >
-                <span className={active ? 'text-white' : 'text-[#3D2B1F]'}>{f.icon}</span>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-full ${active ? 'bg-white/10 text-white' : 'bg-[#F4F4F6] text-[#3D2B1F]'}`}>
+                  {f.icon}
+                </span>
                 <span className="text-xs font-bold whitespace-nowrap">{f.label}</span>
               </button>
             );
           })}
         </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerating || (!requestText.trim() && selectedFilter === 'all')}
+          className="w-full rounded-2xl bg-[#1A5C4A] py-3 text-sm font-semibold text-white transition disabled:bg-gray-300"
+        >
+          レシピを提案する
+        </button>
 
         {/* E. Recipe section */}
         <div className="space-y-3">
@@ -313,10 +326,9 @@ export default function Home() {
             )}
           </div>
 
-          {isGenerating && (
-            <div className="flex items-center justify-center gap-2 rounded-2xl bg-white shadow-sm py-10 text-[#A09080]">
-              <SpinnerIcon />
-              <span className="text-sm">献立を生成中...</span>
+          {isGenerating && hasSearched && (
+            <div className="rounded-2xl bg-white shadow-sm p-4 text-sm text-[#8F8F92]">
+              検索中...
             </div>
           )}
 
@@ -332,7 +344,7 @@ export default function Home() {
             </div>
           )}
 
-          {!isGenerating && !generateError && !recipe && (
+          {!isGenerating && !generateError && !recipe && hasSearched && (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center">
               <p className="text-sm font-bold text-[#A09080]">リクエストを入力してAIに提案させましょう</p>
               <p className="mt-1 text-xs text-gray-400">上の入力欄にリクエストを入れて送信してください</p>

@@ -29,7 +29,7 @@ export default function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const lastScrollY = useRef(0);
-  const pageTitle = 'RECIPE HUB';
+  const pageTitle = 'KITCHEN HUB';
 
   useEffect(() => {
     const handleScroll = () => {
