@@ -240,7 +240,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF8EF] pb-10">
+    <div className="min-h-screen bg-white pb-10">
       <AppHeader />
 
       <div className="p-5 space-y-5">
