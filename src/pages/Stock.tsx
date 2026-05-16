@@ -157,7 +157,7 @@ export default function Stock() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] pb-10">
+    <div className="min-h-screen bg-white pb-10">
       <AppHeader />
 
       <div className="p-5 space-y-5">
