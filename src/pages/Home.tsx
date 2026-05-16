@@ -104,24 +104,27 @@ function FridgeIcon() {
 // ---------- Filters ----------
 
 const FILTERS = [
-  { id: 'all', label: 'すべて', icon: <AllIcon />, text: '' },
   { id: 'quick', label: '時短', icon: <ClockIcon />, text: '10分以内でできるレシピ' },
   { id: 'healthy', label: 'ヘルシー', icon: <LeafIcon />, text: 'カロリー控えめでヘルシーなレシピ' },
   { id: 'hearty', label: 'がっつり', icon: <UtensilsIcon />, text: 'ボリューム満点のレシピ' },
   { id: 'japanese', label: '和食', icon: <RiceBowlIcon />, text: '和食のレシピ' },
 ] as const;
 
-const DEFAULT_TEXT = '';
+const DEFAULT_QUERY = 'さっぱりしたものが食べたい';
 
 // ---------- RecipeCard ----------
 
-function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
+function RecipeCard({ recipe, variant }: { recipe: TodaysRecipeResult; variant: number }) {
   const [showReasons, setShowReasons] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const accentColors = ['#FFCBD8', '#C8F0CA', '#FFE8A8'];
+  const accent = accentColors[variant % accentColors.length];
+  const tagLabel = variant === 0 ? 'おすすめ' : '別の候補';
 
   let hostname: string;
   try {
@@ -135,15 +138,20 @@ function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
 
   return (
     <div
-      className={`rounded-2xl bg-white shadow-sm p-4 space-y-3 transition-all duration-300 ease-out ${
+      className={`rounded-2xl bg-white shadow-sm p-6 space-y-5 transition-all duration-300 ease-out ${
         mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
       }`}
+      style={{ borderLeft: `6px solid ${accent}` }}
       data-swipeable
     >
-      {/* Title & description */}
-      <div>
-        <h3 className="text-xl font-bold text-[#3D2B1F]">{recipe.title}</h3>
-        <p className="mt-1 text-sm text-[#A09080] line-clamp-1">{recipe.description}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-2xl font-bold text-black">{recipe.title}</h3>
+          <p className="mt-2 text-sm text-[#595959] line-clamp-2">{recipe.description}</p>
+        </div>
+        <span className="inline-flex rounded-full bg-[rgba(141,212,159,0.18)] px-3 py-1 text-xs font-semibold text-[#1A5C3F]">
+          {tagLabel}
+        </span>
       </div>
 
       {/* Ingredient chips */}
@@ -165,7 +173,7 @@ function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
         <div>
           <button
             onClick={() => setShowReasons((p) => !p)}
-            className="text-xs text-[#1A5C4A] font-bold flex items-center gap-1"
+            className="text-xs text-black font-bold flex items-center gap-1"
           >
             理由を見る {showReasons ? '▲' : '▼'}
           </button>
@@ -207,7 +215,7 @@ function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
       {/* CTA */}
       <button
         onClick={() => window.open(recipe.sourceUrl, '_blank')}
-        className="w-full rounded-full bg-[#1A5C4A] py-3 text-sm font-bold text-white"
+        className="w-full rounded-full bg-[#88D9A1] py-4 text-base font-semibold text-white"
       >
         このレシピを見る →
       </button>
@@ -220,8 +228,8 @@ function RecipeCard({ recipe }: { recipe: TodaysRecipeResult }) {
 export default function Home() {
   const navigate = useNavigate();
   const [stockItems] = useStock();
-  const [requestText, setRequestText] = useState(DEFAULT_TEXT);
-  const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [requestText, setRequestText] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<string>('quick');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<TodaysRecipeResult | null>(null);
@@ -234,7 +242,7 @@ export default function Home() {
   const handleGenerate = async () => {
     const trimmed = requestText.trim();
     const selectedFilterText = FILTERS.find((item) => item.id === selectedFilter)?.text ?? '';
-    const query = trimmed || (selectedFilter !== 'all' ? selectedFilterText : '');
+    const query = trimmed || selectedFilterText || DEFAULT_QUERY;
     if (!query) return;
 
     setHasSearched(true);
@@ -263,7 +271,7 @@ export default function Home() {
         </div>
 
         {/* C. Text input */}
-        <div className="rounded-full bg-[#F4F4F6] flex items-center px-4 py-3 gap-3">
+        <div className="rounded-full bg-[#F2FAF4] flex items-center px-4 py-3 gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#8F8F92] shadow-sm">
             <SearchIcon />
           </span>
@@ -275,7 +283,7 @@ export default function Home() {
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
             className="bg-transparent flex-1 text-sm font-medium text-[#1A1A1A] outline-none placeholder:text-[#8F8F92]"
-            placeholder="今日の気分は？"
+            placeholder="さっぱりしたものが食べたい"
           />
         </div>
 
@@ -289,11 +297,11 @@ export default function Home() {
                 onClick={() => handleFilterSelect(f.id)}
                 className={`flex flex-col items-center gap-2 flex-shrink-0 rounded-full px-4 py-3 border transition ${
                   active
-                    ? 'bg-[#1A5C4A] text-white border-[#1A5C4A]'
-                    : 'bg-white border-gray-200 text-[#3D2B1F]'
+                    ? 'bg-[#88D9A1] text-white border-[#88D9A1]'
+                    : 'bg-white border-gray-200 text-black'
                 }`}
               >
-                <span className={`flex h-10 w-10 items-center justify-center rounded-full ${active ? 'bg-white/10 text-white' : 'bg-[#F4F4F6] text-[#3D2B1F]'}`}>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-full ${active ? 'bg-white/10 text-white' : 'bg-[#F4F4F6] text-black'}`}>
                   {f.icon}
                 </span>
                 <span className="text-xs font-bold whitespace-nowrap">{f.label}</span>
@@ -304,8 +312,8 @@ export default function Home() {
 
         <button
           onClick={handleGenerate}
-          disabled={isGenerating || (!requestText.trim() && selectedFilter === 'all')}
-          className="w-full rounded-2xl bg-[#1A5C4A] py-3 text-sm font-semibold text-white transition disabled:bg-gray-300 flex items-center justify-center gap-2"
+          disabled={isGenerating}
+          className="w-full rounded-2xl bg-[#8BD9A5] py-4 text-sm font-semibold text-white transition disabled:bg-gray-200 disabled:text-gray-500 flex items-center justify-center gap-2"
         >
           <SendIcon />
           レシピを提案する
@@ -314,12 +322,12 @@ export default function Home() {
         {/* E. Recipe section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-[#3D2B1F]">おすすめレシピ</h2>
+            <h2 className="text-base font-bold text-black">おすすめレシピ</h2>
             {recipe && (
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="flex items-center gap-1 text-xs text-[#1A5C4A] font-bold disabled:opacity-50"
+                className="flex items-center gap-1 text-xs text-black font-bold disabled:opacity-50"
               >
                 <RefreshIcon />
                 別のレシピを見る
@@ -339,7 +347,7 @@ export default function Home() {
               <p className="text-sm text-red-500">{generateError}</p>
               <button
                 onClick={handleGenerate}
-                className="rounded-full border border-[#1A5C4A] px-4 py-2 text-xs font-bold text-[#1A5C4A]"
+                className="rounded-full border border-[#8BD9A5] px-4 py-2 text-xs font-bold text-[#0E7243]"
               >
                 再試行
               </button>
@@ -354,25 +362,28 @@ export default function Home() {
           )}
 
           {!isGenerating && !generateError && recipe && (
-            <RecipeCard recipe={recipe} />
+            <div className="space-y-5">
+              {[0, 1].map((variant) => (
+                <RecipeCard key={variant} recipe={recipe} variant={variant} />
+              ))}
+            </div>
           )}
         </div>
 
         {/* F. Fridge banner */}
         <button
           onClick={() => navigate('/stockhub')}
-          className="w-full bg-[#FFF0E0] rounded-2xl p-4 flex items-center gap-3 text-left"
+          className="w-full bg-[#E6F8E8] rounded-2xl p-4 flex items-center gap-3 text-left"
         >
-          <span className="text-[#1A5C4A]">
+          <span className="text-[#0F6D35]">
             <FridgeIcon />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#3D2B1F]">冷蔵庫をのぞく</p>
-            <p className="text-xs text-[#A09080]">ある食材からレシピを提案します</p>
+            <p className="text-sm font-bold text-black">冷蔵庫をのぞく</p>
           </div>
           <div className="flex-shrink-0 text-right">
             {stockItems.length > 0 ? (
-              <span className="text-xs font-bold text-[#1A5C4A]">食材 {stockItems.length}件 登録済み →</span>
+              <span className="text-xs font-bold text-black">食材 {stockItems.length}件 登録済み →</span>
             ) : (
               <span className="text-xs text-[#A09080]">まだ食材が登録されていません</span>
             )}
